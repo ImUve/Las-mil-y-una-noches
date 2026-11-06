@@ -1,0 +1,18 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const configuration=JSON.parse(readFileSync(new URL('./vercel.json',import.meta.url),'utf8'));
+assert.equal(configuration.framework,null);
+assert.equal(configuration.outputDirectory,'public');
+const [write,blocked,read,other]=configuration.routes;
+assert.deepEqual(write.methods,['POST','PATCH','PUT','DELETE']);
+assert(write.has.some(rule=>rule.type==='header'&&rule.key==='sec-fetch-site'&&rule.value==='same-origin'));
+assert.equal(blocked.status,403);
+assert.deepEqual(blocked.methods,write.methods);
+assert.deepEqual(read.methods,['GET','HEAD','OPTIONS']);
+assert.equal(other.status,405);
+const upstream=new URL(write.dest);
+assert.equal(upstream.protocol,'https:');
+assert.equal(new URL(read.dest).origin,upstream.origin);
+assert.equal(write.transforms[0].args,upstream.origin);
+assert(!Object.hasOwn(configuration,'functions'));
+console.log('Configuración verificada. La publicación conserva el servicio actual como origen.');
